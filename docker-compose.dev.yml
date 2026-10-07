@@ -1,0 +1,94 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      target: development
+    ports:
+      - "4000:4000"
+    volumes:
+      # Source bind-mount for hot reload; anonymous volumes keep build output (obj/bin)
+      # inside the container so it never collides with the Windows host filesystem.
+      - ./backend/src:/src/src
+      - /src/src/SkillSwapToolShare.Api/obj
+      - /src/src/SkillSwapToolShare.Api/bin
+      # Uploaded media (avatars, listing images, message attachments). Persists across
+      # container rebuilds; served by the backend at /media (Media:Path = /app/media).
+      - media_data:/app/media
+    # Secrets (JWT key, Resend key, Phase-2 keys) come from ./backend/.env — gitignored,
+    # carried over from the legacy Node backend. Infra wiring stays inline below.
+    env_file:
+      - ./backend/.env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:4000"
+      ConnectionStrings__Postgres: "Host=db;Port=5432;Database=skillswap_toolshare;Username=postgres;Password=postgres"
+      ConnectionStrings__Redis: "redis:6379"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      # Windows host -> Linux container bind mounts don't deliver inotify events, so Next's
+      # file watcher misses edits and fast-refresh goes stale. Poll instead.
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:17-alpine
+    ports:
+      # Bound to localhost only — prevents exposure on shared/office networks
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: skillswap_toolshare
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      # Bound to localhost only — prevents exposure on shared/office networks
+      - "127.0.0.1:5050:80"
+    environment:
+      # ⚠️  Change these before running on any shared or public network
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      # Bound to localhost only — prevents exposure on shared/office networks
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  media_data:

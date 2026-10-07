@@ -1,0 +1,458 @@
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  // domain relations — added incrementally with migrations
+  profile            UserProfile?
+  listings           Listing[]
+  conversations      ConversationParticipant[]
+  messages           Message[]
+  requestedContracts ExchangeContract[]        @relation("requester")
+  providedContracts  ExchangeContract[]        @relation("provider")
+  reviews             Review[]                  @relation("reviewer")
+  reviewsReceived     Review[]                  @relation("reviewee")
+  identityDocs        IdentityDocument[]
+  cancelledContracts       ExchangeContract[]        @relation("cancelledBy")
+  scheduledConfirmations   ScheduleProposal[]        @relation("ScheduleConfirmer")
+  savedListings            SavedListing[]
+
+  @@map("user")
+}
+
+// =============================================================================
+// USER PROFILES
+// =============================================================================
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                String?
+  location           String?
+  latitude           Float?
+  longitude          Float?
+  timezone           String?
+  phone              String?
+  avatarUrl          String?
+  isIdentityVerified Boolean  @default(false)
+  rating             Float?
+  reviewCount        Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("user_profile")
+}
+
+model Skill {
+  id           Int                  @id @default(autoincrement())
+  name         String               @unique
+  slug         String               @unique
+  category     String?
+  usageCount   Int                  @default(1)
+  skillDetails SkillListingDetail[]
+
+  @@map("skill")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+  @@index([userId])
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+  @@index([identifier])
+}
+
+// =============================================================================
+// CATEGORIES
+// =============================================================================
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  icon     String?
+  order    Int       @default(0)
+  listings Listing[]
+
+  @@map("category")
+}
+
+// =============================================================================
+// LISTINGS
+// =============================================================================
+
+enum ListingType {
+  SKILL_OFFER
+  TOOL_LISTING
+}
+
+enum ListingStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum DeliveryMethod {
+  IN_PERSON
+  REMOTE
+  BOTH
+}
+
+enum ToolCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model Listing {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         ListingType
+  title        String
+  description  String
+  tags         String[]
+  status       ListingStatus @default(ACTIVE)
+  viewCount    Int           @default(0)
+  saveCount    Int           @default(0)
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  latitude     Float?
+  longitude    Float?
+  locationName String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  skillDetail      SkillListingDetail?
+  toolDetail       ToolListingDetail?
+  media            ListingMedia[]
+  contracts        ExchangeContract[] @relation("listing")
+  counterContracts ExchangeContract[] @relation("counterListing")
+  conversations    Conversation[]     @relation("conversationListing")
+  availability     Availability[]
+  saves            SavedListing[]
+
+  @@map("listing")
+  @@index([userId])
+  @@index([type, status])
+  @@index([categoryId])
+  @@index([latitude, longitude])
+}
+
+model SkillListingDetail {
+  listingId      String         @id
+  listing        Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  skillId        Int
+  skill          Skill          @relation(fields: [skillId], references: [id])
+  estimatedHours Float?
+  deliveryMethod DeliveryMethod
+  exchangeFor    String?
+
+  @@map("skill_listing_detail")
+}
+
+model ToolListingDetail {
+  listingId      String        @id
+  listing        Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  category       String
+  condition      ToolCondition
+  depositAmount  Int?
+  maxBorrowDays  Int?
+  pickupLocation String?
+
+  @@map("tool_listing_detail")
+}
+
+model ListingMedia {
+  id        String    @id @default(cuid())
+  listingId String
+  listing   Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  type      MediaType
+  path      String
+  mimeType  String?
+  sizeBytes Int?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@map("listing_media")
+  @@index([listingId])
+}
+
+// =============================================================================
+// MESSAGING
+// =============================================================================
+
+model Conversation {
+  id           String                    @id @default(cuid())
+  listingId    String?
+  listing      Listing?                  @relation("conversationListing", fields: [listingId], references: [id], onDelete: SetNull)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+  messages     Message[]
+  contract     ExchangeContract?
+
+  @@map("conversation")
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  @@id([conversationId, userId])
+  @@map("conversation_participant")
+}
+
+enum MessageType {
+  USER
+  CONTRACT_PROPOSAL
+  SCHEDULE_PROPOSAL
+
+  @@map("message_type")
+}
+
+model Message {
+  id               String              @id @default(cuid())
+  conversationId   String
+  conversation     Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId         String
+  sender           User                @relation(fields: [senderId], references: [id])
+  encryptedContent String
+  iv               String
+  type             MessageType         @default(USER)
+  contractId       String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  attachments      MessageAttachment[]
+  scheduleProposal ScheduleProposal?
+
+  @@map("message")
+  @@index([conversationId])
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  path      String
+  mimeType  String
+  fileName  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@map("message_attachment")
+  @@index([messageId])
+}
+
+model ScheduleProposal {
+  id            String    @id @default(cuid())
+  messageId     String    @unique
+  message       Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  slots         Json
+  confirmedSlot Int?
+  confirmedAt   DateTime?
+  confirmedById String?
+  confirmedBy   User?     @relation("ScheduleConfirmer", fields: [confirmedById], references: [id])
+  createdAt     DateTime  @default(now())
+
+  @@map("schedule_proposal")
+}
+
+// =============================================================================
+// EXCHANGES
+// =============================================================================
+
+enum ContractStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+model ExchangeContract {
+  id               String         @id @default(cuid())
+  requesterId      String
+  requester        User           @relation("requester", fields: [requesterId], references: [id])
+  providerId       String
+  provider         User           @relation("provider", fields: [providerId], references: [id])
+  listingId        String
+  listing          Listing        @relation("listing", fields: [listingId], references: [id])
+  counterListingId String?
+  counterListing   Listing?       @relation("counterListing", fields: [counterListingId], references: [id])
+  conversationId    String?        @unique
+  conversation      Conversation?  @relation(fields: [conversationId], references: [id])
+  encryptedMessage  String?
+  messageIv         String?
+  status            ContractStatus @default(PENDING)
+  scheduledStart    DateTime?
+  scheduledEnd      DateTime?
+  completedAt                DateTime?
+  cancelledAt                DateTime?
+  cancelledById              String?
+  cancelledBy                User?          @relation("cancelledBy", fields: [cancelledById], references: [id])
+  cancelReason               String?
+  requesterConfirmedComplete Boolean        @default(false)
+  providerConfirmedComplete  Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  reviews          Review[]
+
+  @@map("exchange_contract")
+  @@index([requesterId])
+  @@index([providerId])
+  @@index([listingId])
+  @@index([status])
+}
+
+// =============================================================================
+// REVIEWS, IDENTITY, AVAILABILITY
+// =============================================================================
+
+model Review {
+  id         String           @id @default(cuid())
+  contractId String
+  contract   ExchangeContract @relation(fields: [contractId], references: [id])
+  reviewerId String
+  reviewer   User             @relation("reviewer", fields: [reviewerId], references: [id])
+  revieweeId String
+  reviewee   User             @relation("reviewee", fields: [revieweeId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([contractId, reviewerId])
+  @@map("review")
+  @@index([revieweeId])
+}
+
+enum DocumentType {
+  PASSPORT
+  DRIVERS_LICENSE
+  NATIONAL_ID
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model IdentityDocument {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            DocumentType
+  documentPath    String
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  expiresAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("identity_document")
+  @@index([userId])
+}
+
+model Availability {
+  id        String   @id @default(cuid())
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  dayOfWeek Int
+  startTime String
+  endTime   String
+
+  @@map("availability")
+  @@index([listingId])
+}
+
+// =============================================================================
+// SAVES
+// =============================================================================
+
+model SavedListing {
+  userId    String
+  listingId String
+  savedAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([listingId])
+  @@map("saved_listing")
+}

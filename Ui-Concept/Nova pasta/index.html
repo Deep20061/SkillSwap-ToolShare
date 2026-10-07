@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SkillSwap · Marketplace</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com?plugins=line-clamp"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50:  'var(--brand-50)',
+              100: 'var(--brand-100)',
+              200: 'var(--brand-200)',
+              300: 'var(--brand-300)',
+              400: 'var(--brand-400)',
+              500: 'var(--brand-500)',
+              600: 'var(--brand-600)',
+              700: 'var(--brand-700)',
+              800: 'var(--brand-800)',
+              900: 'var(--brand-900)',
+            },
+            ink:     'var(--ink)',
+            ink2:    'var(--ink-2)',
+            ink3:    'var(--ink-3)',
+            line:    'var(--line)',
+            line2:   'var(--line-2)',
+            surface: 'var(--surface)',
+            sunken:  'var(--sunken)',
+            raised:  'var(--raised)',
+          },
+          boxShadow: {
+            card: '0 1px 2px rgba(15,23,42,.04), 0 1px 1px rgba(15,23,42,.03)',
+            pop:  '0 12px 32px -8px rgba(15,23,42,.18), 0 4px 12px -2px rgba(15,23,42,.08)',
+          },
+          keyframes: {
+            fadein: { '0%': { opacity: 0, transform: 'translateY(6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+            pulseDot: { '0%,100%': { opacity: 1 }, '50%': { opacity: .35 } },
+          },
+          animation: {
+            fadein:   'fadein .35s ease both',
+            pulseDot: 'pulseDot 1.6s ease-in-out infinite',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      /* Refined blue — oklch */
+      --brand-50:  oklch(0.975 0.014 252);
+      --brand-100: oklch(0.952 0.030 252);
+      --brand-200: oklch(0.905 0.052 252);
+      --brand-300: oklch(0.825 0.090 252);
+      --brand-400: oklch(0.725 0.130 252);
+      --brand-500: oklch(0.625 0.170 252);
+      --brand-600: oklch(0.555 0.180 252);
+      --brand-700: oklch(0.475 0.165 252);
+      --brand-800: oklch(0.395 0.135 252);
+      --brand-900: oklch(0.300 0.095 252);
+
+      --ink:     oklch(0.22 0.018 260);
+      --ink-2:   oklch(0.42 0.014 260);
+      --ink-3:   oklch(0.62 0.012 260);
+      --line:    oklch(0.93 0.006 260);
+      --line-2:  oklch(0.88 0.008 260);
+      --surface: #ffffff;
+      --sunken:  oklch(0.985 0.003 260);
+      --raised:  #ffffff;
+    }
+    .dark {
+      --brand-50:  oklch(0.22 0.04 252);
+      --brand-100: oklch(0.27 0.06 252);
+      --brand-200: oklch(0.33 0.08 252);
+      --brand-300: oklch(0.42 0.11 252);
+      --brand-400: oklch(0.55 0.15 252);
+      --brand-500: oklch(0.68 0.17 252);
+      --brand-600: oklch(0.74 0.16 252);
+      --brand-700: oklch(0.80 0.13 252);
+      --brand-800: oklch(0.88 0.08 252);
+      --brand-900: oklch(0.95 0.04 252);
+
+      --ink:     oklch(0.96 0.006 260);
+      --ink-2:   oklch(0.78 0.012 260);
+      --ink-3:   oklch(0.58 0.012 260);
+      --line:    oklch(0.27 0.012 260);
+      --line-2:  oklch(0.34 0.012 260);
+      --surface: oklch(0.18 0.012 260);
+      --sunken:  oklch(0.13 0.012 260);
+      --raised:  oklch(0.22 0.014 260);
+
+      color-scheme: dark;
+    }
+
+    html, body { background: var(--sunken); color: var(--ink); }
+    body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { border-color: var(--line); }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; border: 2px solid var(--sunken); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+    /* Map placeholder grid */
+    .map-grid {
+      background-color: var(--sunken);
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        radial-gradient(ellipse at 30% 40%, var(--brand-100) 0%, transparent 60%),
+        radial-gradient(ellipse at 70% 70%, var(--brand-100) 0%, transparent 50%);
+      background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
+    }
+    .dark .map-grid {
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px),
+        radial-gradient(ellipse at 30% 40%, var(--brand-100) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 70%, var(--brand-100) 0%, transparent 40%);
+    }
+    .stripe-ph {
+      background-image: repeating-linear-gradient(135deg, var(--line) 0, var(--line) 1px, transparent 1px, transparent 14px);
+    }
+
+    /* Hide scrollbars on horizontal chip rows */
+    .scroll-x { overflow-x: auto; scrollbar-width: none; }
+    .scroll-x::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="screens-browse.jsx"></script>
+  <script type="text/babel" src="screens-listing.jsx"></script>
+  <script type="text/babel" src="screens-comms.jsx"></script>
+  <script type="text/babel" src="screens-account.jsx"></script>
+  <script type="text/babel" src="screens-auth.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>
